@@ -66,7 +66,7 @@ int main(int ac, char **av) {
                 sprintf(buff, "server: client %d just arrived\n", clients[newfd].id);
                 broadcast(buff, strlen(buff), newfd);
                 break;
-            }s
+            }
             else if (FD_ISSET(fd, &rset) && fd != sockfd) {
                 if (recv(fd, &c, 1, 0) <= 0) {
                     sprintf(buff, "server: client %d just left\n", clients[fd].id);
