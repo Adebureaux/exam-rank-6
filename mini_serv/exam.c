@@ -3,51 +3,55 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#define BUFF_SIZE 200000
 
 typedef struct s_client {
     int nl, id;
 } client;
 client clients[1024];
-fd_set rset, wset, set = (const fd_set){0};
-char buffin[66000], buffout[66000 + 42], buffer[66000];
-int sockfd, maxfd, newfd, res, id = 0;
+fd_set wset, rset, set = (const fd_set){0};
+int sockfd, newfd, maxfd, res, id = 0; // FORGOT newfd, res
+char buffin[BUFF_SIZE], buffout[BUFF_SIZE + 42], buffer[BUFF_SIZE];
 
-void exit_fatal() {
-	write(2, "Fatal error\n", 12);
-    close(sockfd);
+void fatal() {
+    write(2, "Fatal error\n", strlen("Fatal error\n"));
+    close(sockfd); // FORGOT
     exit(1);
 }
 
 void broadcast(int sender) {
-    for (int i = 0; i <= maxfd; i++)
-		if (FD_ISSET(i, &wset) && i != sender)
-			send(i, buffout, strlen(buffout), 0);
+    for (int i = 0; i <= maxfd; i++) {
+        if (FD_ISSET(i, &wset) && i != sender) {
+            send(i, buffout, strlen(buffout), 0);
+        }
+    }
 }
 
 int main(int ac, char **av) {
     if (ac < 2) {
-        write(2, "Wrong number of arguments\n", 26);
+        write(2, "Wrong number of arguments\n", strlen("Wrong number of arguments\n"));
         return 1;
     }
-	struct sockaddr_in servaddr;
+	struct sockaddr_in servaddr; 
 
+	// socket create and verification
 	if ((maxfd = sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        exit_fatal();
+        fatal();
 	bzero(&servaddr, sizeof(servaddr));
-	FD_SET(sockfd, &set);
+    FD_SET(sockfd, &set);
 
 	// assign IP, PORT 
-	servaddr.sin_family = AF_INET;
+	servaddr.sin_family = AF_INET; 
 	servaddr.sin_addr.s_addr = htonl(2130706433); //127.0.0.1
-	servaddr.sin_port = htons(atoi(av[1]));
+	servaddr.sin_port = htons(atoi(av[1])); 
   
 	// Binding newly created socket to given IP and verification 
 	if ((bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr))) != 0)
-        exit_fatal();
+        fatal();
 	if (listen(sockfd, 10) != 0)
-        exit_fatal();
+        fatal();
 
     while (1) {
         wset = rset = set;
@@ -57,21 +61,21 @@ int main(int ac, char **av) {
             if (FD_ISSET(fd, &rset) && fd == sockfd) {
                 if ((newfd = accept(sockfd, 0, 0)) < 0)
                     continue;
-                clients[newfd].nl = 0;
                 clients[newfd].id = id++;
-                maxfd = newfd > maxfd ? newfd : maxfd;
+                clients[newfd].nl = 0;
                 FD_SET(newfd, &set);
+                maxfd = newfd > maxfd ? newfd : maxfd;
                 sprintf(buffout, "server: client %d just arrived\n", clients[newfd].id);
                 broadcast(newfd);
-                break;
+                break; // FORGOT
             }
             else if (FD_ISSET(fd, &rset) && fd != sockfd) {
-                if ((res = recv(fd, buffin, 66000, 0)) <= 0) {
-                    sprintf(buffout, "server: client %d just left\n", clients[fd].id);
+                if ((res = recv(fd, buffin, BUFF_SIZE, 0)) <= 0) {
+                    sprintf(buffout, "server: client %d just left\n", clients[fd].id); // Wrong target clients[fd].id
                     broadcast(fd);
                     FD_CLR(fd, &set);
                     close(fd);
-                    break;
+                    break; // FORGOT
                 }
                 else {
                     for (int i = 0, j = 0; i < res; i++, j++) {
@@ -84,13 +88,13 @@ int main(int ac, char **av) {
                                 sprintf(buffout, "client %d: %s", clients[fd].id, buffer);
                             clients[fd].nl = 0;
                             broadcast(fd);
-                            j = -1;
+                            j = -1; // FORGOT
                         }
                         else if (i == (res - 1)) {
                             if (clients[fd].nl)
                                 sprintf(buffout, "%s", buffer);
                             else
-                              sprintf(buffout, "client %d: %s", clients[fd].id, buffer);
+                                sprintf(buffout, "client %d: %s", clients[fd].id, buffer);
                             clients[fd].nl = 1;
                             broadcast(fd);
                             break;
